@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  # 1. PHP-FPM
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: laravel_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    networks:
+      - laravel_network
+
+  # 2. Nginx
+  web:
+    image: nginx:alpine
+    container_name: laravel_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80" # Truy cập web qua localhost:8000
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - laravel_network
+    depends_on:
+      - app
+
+  # 3. MySQL
+  db:
+    image: mysql:8.0
+    container_name: laravel_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: laravel_db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: secret_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - laravel_network
+
+  # 4. Redis
+  redis:
+    image: redis:alpine
+    container_name: laravel_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - laravel_network
+
+  # 5. Mailhog (Bắt email test)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: laravel_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # Cổng SMTP cho Laravel gửi mail
+      - "8025:8025" # Giao diện web xem mail (localhost:8025)
+    networks:
+      - laravel_network
+
+  # 6. MinIO (S3 compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: laravel_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minio_admin
+      MINIO_ROOT_PASSWORD: minio_password
+    command: server /data --console-address ":8900"
+    ports:
+      - "9000:9000" # API Port (S3 Endpoint)
+      - "8900:8900" # Giao diện web MinIO (localhost:8900)
+    volumes:
+      - minio_data:/data
+    networks:
+      - laravel_network
+
+networks:
+  laravel_network:
+    driver: bridge
+
+volumes:
+  db_data:
+  redis_data:
+  minio_data:
