@@ -1,59 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# iTravel Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Backend API for iTravel, built with Laravel 12 and JWT authentication.
 
-## About Laravel
+## Current Version Information
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP: `8.2` (using Docker image `php:8.2-fpm`)
+- Laravel Framework: `^12.0`
+- Node.js tooling: Vite `^7.0.7`, Tailwind CSS `^4.0.0`
+- Docker Compose file format: `3.8`
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Main Libraries in Use
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Backend (Composer)
 
-## Learning Laravel
+- `laravel/framework:^12.0`
+- `php-open-source-saver/jwt-auth:^2.2` (JWT auth)
+- `artesaos/seotools:^1.3` (SEO tools)
+- `cviebrock/eloquent-sluggable:^12.0` (model slugs)
+- `maatwebsite/excel:^3.1` (Excel import/export)
+- `league/flysystem-aws-s3-v3:^3.32` (S3 storage, used with MinIO)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Docker System
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The current `docker-compose.yml` provisions these services:
 
-## Laravel Sponsors
+- `app`: PHP-FPM running Laravel (`laravel_app`)
+- `web`: Nginx exposed on port `8000` (`laravel_nginx`)
+- `db`: MySQL 8.0 on port `3306` (`laravel_mysql`)
+- `redis`: Redis on port `6379` (`laravel_redis`)
+- `mailhog`: SMTP testing + UI on `1025/8025` (`laravel_mailhog`)
+- `minio`: S3-compatible storage on `9000/8900` (`laravel_minio`)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Quick Docker Setup
 
-### Premium Partners
+### 1. Create environment file
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+cp .env.example .env
+```
 
-## Contributing
+If you are using PowerShell on Windows:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```powershell
+Copy-Item .env.example .env
+```
 
-## Code of Conduct
+### 2. Update `.env` for Docker
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Set the following important variables:
 
-## Security Vulnerabilities
+```env
+APP_URL=http://localhost:8000
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=laravel_db
+DB_USERNAME=laravel_user
+DB_PASSWORD=secret_password
 
-## License
+REDIS_HOST=redis
+REDIS_PORT=6379
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MAIL_MAILER=smtp
+MAIL_HOST=mailhog
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+
+FILESYSTEM_DISK=s3
+AWS_ACCESS_KEY_ID=minio_admin
+AWS_SECRET_ACCESS_KEY=minio_password
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=itravel
+AWS_ENDPOINT=http://minio:9000
+AWS_URL=http://localhost:9000
+AWS_USE_PATH_STYLE_ENDPOINT=true
+```
+
+### 3. Build and run containers
+
+```bash
+docker compose up -d --build
+```
+
+If your machine only supports the legacy command:
+
+```bash
+docker-compose up -d --build
+```
+
+### 4. Install dependencies and initialize the app in container
+
+```bash
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+```
+
+### 5. JWT setup (run once)
+
+```bash
+docker compose exec app php artisan vendor:publish --provider="PHPOpenSourceSaver\JWTAuth\Providers\LaravelServiceProvider"
+docker compose exec app php artisan jwt:secret
+```
+
+### 6. Access services
+
+- API/Laravel: `http://localhost:8000`
+- Mailhog UI: `http://localhost:8025`
+- MinIO Console: `http://localhost:8900`
+- MinIO S3 Endpoint: `http://localhost:9000`
+
+## Useful Commands
+
+```bash
+docker compose ps
+docker compose logs -f app
+docker compose exec app php artisan route:list
+docker compose down
+```
+
+## Notes
+
+- Nginx config is located at `docker/nginx/default.conf`.
+- PHP Docker image config is located at `docker/php/Dockerfile`.
+- If you need to create the storage symlink:
+
+```bash
+docker compose exec app php artisan storage:link
+```
